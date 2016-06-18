@@ -1,24 +1,21 @@
 import { Component } from '@angular/core';
-import { Http, HTTP_PROVIDERS } from '@angular/http';
+import { HTTP_PROVIDERS } from '@angular/http';
 
-import { CheshireCatComponent } from './cheshire-cat/cheshire-cat.component';
+import { AttributionComponent } from './shared/attribution.component';
+import { StockGraphComponent } from './stock-graph/stock-graph.component';
+import { StockService } from './shared/stock.service';
 
 @Component({
   moduleId: module.id,
   selector: 'my-app',
   templateUrl: 'app.component.html',
   styleUrls: ['app.component.css'],
-  directives: [CheshireCatComponent],
-  providers: HTTP_PROVIDERS
+  directives: [AttributionComponent, StockGraphComponent],
+  providers: [HTTP_PROVIDERS, StockService]
 })
 export class AppComponent {
-  serverData: string;
   
-  constructor(private http: Http) { 
-    this.http.get('/test')
-      .subscribe((res:any) => {
-        this.serverData = res._body;
-      });
+  constructor() { 
   }
 
 }

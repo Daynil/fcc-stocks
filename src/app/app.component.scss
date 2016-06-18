@@ -1,3 +1,11 @@
-h1 {
-  color: red;
+@import './shared/colors';
+
+#app-wrapper {
+  width: 100%;
+  min-height: 100%;
+  padding-top: 15px;
+  color: aliceblue;
+  font-family: 'Raleway';
+  background-color: $light-teal;
+  text-align: center;
 }

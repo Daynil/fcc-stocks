@@ -5,12 +5,20 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
 const compress = require('compression');
+const axios = require('axios');
 
 // Load local environment variables in development
 if (process.env.NODE_ENV !== 'production') {
 	require('dotenv').load();
 }
 let production = process.env.NODE_ENV === 'production';
+
+// Quandl specific
+const apiKey = process.env.QUANDL_API_KEY;
+const baseUrl = 'https://www.quandl.com/api/v3/datasets/WIKI/';
+
+// DEBUG
+const debugCache = require('./debugCache.json');
 
 /** True = get response details on served node modules **/
 let verboseLogging = false;
@@ -34,8 +42,16 @@ app.use( express.static( path.join(__dirname, '../dist') ));
 app.use('/scripts', express.static( path.join(__dirname, '../node_modules') ));
 app.use('/app', express.static( path.join(__dirname, '../dist/app') ));
 
-app.get('/test', (req, res) => {
-  res.status(200).end('Data received from server!');
+app.get('/api/getstockdata/:symbol', (req, res) => {
+  let stockSym = req.params.symbol;
+  res.status(200).json(debugCache);
+/*  axios.get(`${baseUrl}${stockSym}.json?api_key=${apiKey}`)
+        .then(data => {
+          res.status(200).json(data.data);
+        })
+        .catch(err => {
+          res.status(500).send({ error: err });
+        });*/
 });
 
 /** Pass all non-api routes to front-end router for handling **/ 
