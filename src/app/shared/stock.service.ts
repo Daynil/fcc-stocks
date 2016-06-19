@@ -12,11 +12,14 @@ export class StockService {
 
   stockList: Stock[] = [];
 
+  w = 1100;
+  h = 350;
+  padding = 35;
   chartRef: d3.Selection<any>;
-  w = 1049;
-  h = 241;
   xScale: d3.scale.Linear<number, number>;
   yScale: d3.scale.Linear<number, number>;  
+  xAxis: d3.svg.Axis;
+  yAxis: d3.svg.Axis;
 
   constructor(private http: Http) { }
 
@@ -28,6 +31,8 @@ export class StockService {
 
     this.xScale = d3.scale.linear();
     this.yScale = d3.scale.linear();
+    this.xAxis = d3.svg.axis().orient('bottom');
+    this.yAxis = d3.svg.axis().orient('left');
 
     this.getStockData('FB')
         .then(stockInfo => this.addStocktoChart(stockInfo));
@@ -50,9 +55,33 @@ export class StockService {
       if (stockMaxPrice > maxPrice) maxPrice = stockMaxPrice; 
     });
 
-    this.xScale.domain([minDate, maxDate]).range([0, this.w]);
+    this.xScale.domain([minDate, maxDate]).range([this.padding, this.w]);
+    this.yScale.domain([minPrice, maxPrice]).range([this.h - this.padding, 0]);
 
-    this.yScale.domain([minPrice, maxPrice]).range([this.h, 0]);
+    this.xAxis.scale(this.xScale);
+    this.yAxis.scale(this.yScale).ticks(6);
+
+    // Draw axis first
+    this.chartRef.append('g')
+                  .attr('transform', `translate(0, ${this.h - this.padding})`)
+                  .attr('class', 'axis')
+                  .call(this.xAxis);
+    this.chartRef.append('g')
+                  .attr('transform', `translate(${this.padding}, 0)`)
+                  .attr('class', 'axis')
+                  .call(this.yAxis);
+
+    this.chartRef.selectAll('.axis line, .axis path')
+                  .attr('stroke', 'aliceblue')
+                  .attr('shape-rendering', 'crispEdges')
+                  .attr('fill', 'none')
+                  .attr('color', 'aliceblue')
+                  .attr('stroke-width', 1);
+
+    this.chartRef.selectAll('.axis text')
+                  .attr('font-size', '12px')
+                  .attr('fill', 'aliceblue')
+                  .attr('shape-rendering', 'crispEdges');
 
     // Create and append line to chart
     let line = d3.svg.line<DataPoint>()

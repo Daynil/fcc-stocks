@@ -1,9 +1,15 @@
 @import '../shared/colors';
 
 #graph-wrapper {
+  display: inline-block;
   background-color: $medium-teal;
+  font-family: 'Open Sans';
   margin: 0 auto;
   margin-top: 25px;
-  width: 70%;
-  height: 70%;
+  min-width: 1164px;
+  min-height: 350px;
+}
+
+#graph {
+  margin-top: 20px;
 }
