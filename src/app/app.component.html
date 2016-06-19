@@ -2,4 +2,8 @@
   <h1>Stock Tracker</h1>
   <attribution></attribution>
   <stock-graph></stock-graph>
+  <div id="stock-input">
+    Add Stock: <input #stockname type="text" placeholder="Stock name..."
+                      (keyup.enter)="addStock(stockname.value)">
+  </div>
 </div>

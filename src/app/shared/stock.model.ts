@@ -7,6 +7,6 @@ export interface Stock {
 }
 
 export interface DataPoint {
-  date: number;
+  date: Date;
   price: number;
 }

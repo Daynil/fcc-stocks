@@ -14,33 +14,54 @@ export class StockService {
 
   w = 1100;
   h = 350;
-  padding = 35;
+  paddingX = 35;
+  paddingY = 5;
   chartRef: d3.Selection<any>;
-  xScale: d3.scale.Linear<number, number>;
+  xScale: d3.time.Scale<number, number>;
   yScale: d3.scale.Linear<number, number>;  
   xAxis: d3.svg.Axis;
   yAxis: d3.svg.Axis;
+  lineFunc: d3.svg.Line<DataPoint>;
+
+  lineRef: HTMLDivElement;
+  leftBase = 317;
+  mouseX = 0;
 
   constructor(private http: Http) { }
 
-  createGraph(el: HTMLDivElement) {
-    this.chartRef = d3.select(el)
+  updateMouseX(xPos: number) {
+ 	  this.mouseX = xPos;
+  }
+
+  createGraph(graph: HTMLDivElement, line: HTMLDivElement) {
+    this.chartRef = d3.select(graph)
                       .append('svg')
                       .attr('width', this.w + 'px')
                       .attr('height', this.h + 'px');
 
-    this.xScale = d3.scale.linear();
+    this.lineRef = line;
+    console.log(this.lineRef);
+
+    this.xScale = d3.time.scale();
     this.yScale = d3.scale.linear();
     this.xAxis = d3.svg.axis().orient('bottom');
     this.yAxis = d3.svg.axis().orient('left');
 
-    this.getStockData('FB')
-        .then(stockInfo => this.addStocktoChart(stockInfo));
+    // Draw axis first
+    this.chartRef.append('g')
+                  .attr('transform', `translate(0, ${this.h - this.paddingX})`)
+                  .attr('class', 'x axis');
+    this.chartRef.append('g')
+                  .attr('transform', `translate(${this.paddingX}, 0)`)
+                  .attr('class', 'y axis');
+
+    this.lineFunc = d3.svg.line<DataPoint>()
+                          .x((d, i) => this.xScale(d.date))
+                          .y(d => this.yScale(d.price));
   }
 
   addStocktoChart(stockInfo: Stock) {
     this.stockList.push(stockInfo);
-    let dataset = stockInfo.data;
 
     // Find appropriate scale based on min and max values in stock collection
     let minDate = d3.min(this.stockList, d => Date.parse(d.oldestDate));
@@ -55,22 +76,16 @@ export class StockService {
       if (stockMaxPrice > maxPrice) maxPrice = stockMaxPrice; 
     });
 
-    this.xScale.domain([minDate, maxDate]).range([this.padding, this.w]);
-    this.yScale.domain([minPrice, maxPrice]).range([this.h - this.padding, 0]);
+    this.xScale.domain([minDate, maxDate]).range([this.paddingX, this.w]);
+    this.yScale.domain([minPrice, maxPrice]).range([this.h - this.paddingX, this.paddingX]);
 
-    this.xAxis.scale(this.xScale);
+    // Update x-axis labels
+    let timeFormat = d3.time.format("%b '%y");
+    this.xAxis.scale(this.xScale).tickFormat(timeFormat);
     this.yAxis.scale(this.yScale).ticks(6);
 
-    // Draw axis first
-    this.chartRef.append('g')
-                  .attr('transform', `translate(0, ${this.h - this.padding})`)
-                  .attr('class', 'axis')
-                  .call(this.xAxis);
-    this.chartRef.append('g')
-                  .attr('transform', `translate(${this.padding}, 0)`)
-                  .attr('class', 'axis')
-                  .call(this.yAxis);
-
+    this.chartRef.selectAll('g.x.axis').transition().duration(500).call(this.xAxis);
+    this.chartRef.selectAll('g.y.axis').transition().duration(500).call(this.yAxis);
     this.chartRef.selectAll('.axis line, .axis path')
                   .attr('stroke', 'aliceblue')
                   .attr('shape-rendering', 'crispEdges')
@@ -83,16 +98,31 @@ export class StockService {
                   .attr('fill', 'aliceblue')
                   .attr('shape-rendering', 'crispEdges');
 
-    // Create and append line to chart
-    let line = d3.svg.line<DataPoint>()
-                  .x((d, i) => this.xScale(d.date))
-                  .y(d => this.yScale(d.price));
+    // Apply list of stocks as new data
+    let lines = this.chartRef.selectAll('.line')
+                              .data(this.stockList.map(stock => stock.data))
+                              .attr('class', 'line');
 
-    this.chartRef.append('svg:path')
-                  .attr('d', line(dataset))
-                  .attr('fill', 'none')
-                  .attr('stroke', 'hsl(191, 100%, 50%)')
-                  .attr('stroke-width', 1.5);
+    // Transition existing lines
+    lines.transition().duration(500)
+          .attr('d', this.lineFunc)
+          .attr('fill', 'none')
+          .attr('stroke', 'hsl(191, 100%, 50%)')
+          .attr('stroke-width', 1.5);
+
+    // Add non-existing lines
+    lines.enter()
+          .append('svg:path')
+          .attr('class', 'line')
+          .attr('d', this.lineFunc)
+          .attr('fill', 'none')
+          .attr('stroke', 'hsl(191, 100%, 50%)')
+          .attr('stroke-width', 1.5);
+    lines.exit();
+  }
+
+  showLine() {
+    //this.lineRef.setAttribute('left', this.mouseX + 'px');
   }
 
   getStockData(stockSymbol: string) {
@@ -101,7 +131,8 @@ export class StockService {
                 .toPromise()
                 .then(parseJson)
                 .then(this.formatResponse)
-                .catch(handleError)
+                .then(stockInfo => this.addStocktoChart(stockInfo))
+                .catch(handleError);
   }
 
   private formatResponse(dataset) {
@@ -114,7 +145,7 @@ export class StockService {
     formattedData.oldestDate = data.oldest_available_date;
     formattedData.data = [];
     data.data.forEach(dayData => {
-      let numberDate = Date.parse(dayData[0]);
+      let numberDate = new Date(dayData[0]);
       let formattedDayData = {
         date: numberDate,
         price: dayData[1]

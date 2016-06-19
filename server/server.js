@@ -44,14 +44,14 @@ app.use('/app', express.static( path.join(__dirname, '../dist/app') ));
 
 app.get('/api/getstockdata/:symbol', (req, res) => {
   let stockSym = req.params.symbol;
-  res.status(200).json(debugCache);
-/*  axios.get(`${baseUrl}${stockSym}.json?api_key=${apiKey}`)
+  //res.status(200).json(debugCache);
+  axios.get(`${baseUrl}${stockSym}.json?api_key=${apiKey}`)
         .then(data => {
           res.status(200).json(data.data);
         })
         .catch(err => {
           res.status(500).send({ error: err });
-        });*/
+        });
 });
 
 /** Pass all non-api routes to front-end router for handling **/ 

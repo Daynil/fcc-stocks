@@ -1,5 +1,5 @@
 import { AfterViewInit, Component, ElementRef,
-         OnInit, ViewChild } from '@angular/core';
+         HostListener, OnInit, ViewChild } from '@angular/core';
 
 import { StockService } from '../shared/stock.service';
 
@@ -12,13 +12,19 @@ import { StockService } from '../shared/stock.service';
 export class StockGraphComponent implements AfterViewInit, OnInit {
 
   @ViewChild('graph') graph: ElementRef;
+  @ViewChild('verticalline') verticalLine: ElementRef;
 
   constructor(private stockService: StockService) { }
 
   ngOnInit() { }
 
   ngAfterViewInit() {
-    this.stockService.createGraph(this.graph.nativeElement);
+    this.stockService.createGraph(this.graph.nativeElement, this.verticalLine.nativeElement);
+  }
+
+  @HostListener('mousemove', ['$event'])
+  onMouseMove(event: MouseEvent) {
+    this.stockService.updateMouseX(event.clientX);
   }
 
 }

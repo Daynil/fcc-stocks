@@ -7,9 +7,19 @@
   margin: 0 auto;
   margin-top: 25px;
   min-width: 1164px;
-  min-height: 350px;
+  min-height: 400px;
 }
 
 #graph {
+  position: relative;
   margin-top: 20px;
+}
+
+#vertical-line {
+  position: absolute;
+  height: 280px;
+  top: 195px;
+  width: 1px;
+  background-color: aliceblue;
+  display: none;
 }

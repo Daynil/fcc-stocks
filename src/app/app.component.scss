@@ -9,3 +9,15 @@
   background-color: $light-teal;
   text-align: center;
 }
+
+#stock-input {
+  margin-top: 10px;
+  input {
+    background-color: transparent;
+    border: 1px solid aliceblue;
+    border-radius: 5px;
+    padding: 5px;
+    color: aliceblue;
+    outline: none;
+  }
+}

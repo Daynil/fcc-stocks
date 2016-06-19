@@ -14,8 +14,10 @@ import { StockService } from './shared/stock.service';
   providers: [HTTP_PROVIDERS, StockService]
 })
 export class AppComponent {
-  
-  constructor() { 
-  }
 
+  constructor(private stockService: StockService) { }
+
+  addStock(stockName: string) {
+    this.stockService.getStockData(stockName);
+  }
 }
