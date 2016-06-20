@@ -45,7 +45,7 @@ app.use('/app', express.static( path.join(__dirname, '../dist/app') ));
 app.get('/api/getstockdata/:symbol', (req, res) => {
   let stockSym = req.params.symbol;
   //res.status(200).json(debugCache);
-  axios.get(`${baseUrl}${stockSym}.json?api_key=${apiKey}`)
+  axios.get(`${baseUrl}${stockSym}.json?api_key=${apiKey}&start_date=2015-06-17`)
         .then(data => {
           res.status(200).json(data.data);
         })

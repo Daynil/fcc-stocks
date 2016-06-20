@@ -17,7 +17,10 @@ export class AppComponent {
 
   constructor(private stockService: StockService) { }
 
-  addStock(stockName: string) {
+  addStock(stockInput: HTMLInputElement) {
+    let stockName = stockInput.value;
+    if (stockName.length < 1) return;
+    stockInput.value = '';
     this.stockService.getStockData(stockName);
   }
 }
