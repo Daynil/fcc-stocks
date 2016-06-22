@@ -18,7 +18,11 @@ const apiKey = process.env.QUANDL_API_KEY;
 const baseUrl = 'https://www.quandl.com/api/v3/datasets/WIKI/';
 
 // DEBUG
-const debugCache = require('./debugCache.json');
+//const fs = require('fs');
+const aaplCache = require('./aaplCache.json');
+const abbvCache = require('./abbvCache.json');
+const cvsCache = require('./cvsCache.json');
+const fbCache = require('./fbCache.json');
 
 /** True = get response details on served node modules **/
 let verboseLogging = false;
@@ -44,12 +48,21 @@ app.use('/app', express.static( path.join(__dirname, '../dist/app') ));
 
 app.get('/api/getstockdata/:symbol', (req, res) => {
   let stockSym = req.params.symbol;
-  //res.status(200).json(debugCache);
-  axios.get(`${baseUrl}${stockSym}.json?api_key=${apiKey}&start_date=2015-06-17`)
+  if (stockSym === "FB") {
+    res.status(200).json(fbCache);
+  } else if (stockSym === "AAPL") {
+    res.status(200).json(aaplCache);            
+  } else if (stockSym === "CVS") {
+    res.status(200).json(cvsCache);
+  } else if (stockSym === "ABBV") {
+    res.status(200).json(abbvCache);
+  }
+  else axios.get(`${baseUrl}${stockSym}.json?api_key=${apiKey}&start_date=2015-06-17`)
         .then(data => {
           res.status(200).json(data.data);
         })
         .catch(err => {
+          console.log(err);
           res.status(500).send({ error: err });
         });
 });

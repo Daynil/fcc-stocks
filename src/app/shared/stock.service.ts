@@ -5,6 +5,7 @@ import * as d3 from "d3";
 
 import { parseJson, handleError } from '../shared/http-helpers';
 import { DataPoint, Stock } from './stock.model';
+import { RandomColorGen } from './color-gen.util';
 
 
 @Injectable()
@@ -26,8 +27,12 @@ export class StockService {
   lineRef: HTMLDivElement;
   leftBase = 317;
   mouseX = 0;
+  colorGen: RandomColorGen;
 
-  constructor(private http: Http) { }
+  constructor(private http: Http) {
+    // How do we dependency inject a utility with configurable paramater?
+    this.colorGen = new RandomColorGen(24);
+  }
 
   updateMouseX(xPos: number) {
  	  this.mouseX = xPos;
@@ -61,7 +66,7 @@ export class StockService {
   }
 
   addStocktoChart(stockInfo: Stock) {
-    this.stockList.push({stock: stockInfo, color: this.randomColor()});
+    this.stockList.push({stock: stockInfo, color: this.colorGen.randomColor()});
 
     // Find appropriate scale based on min and max values in stock collection
     let minDate = d3.max(this.stockList, d => d3.min( d.stock.data, d2 => d2.date.getTime()) );
@@ -116,37 +121,6 @@ export class StockService {
           .attr('stroke', (d, i) => this.stockList[i].color)
           .attr('stroke-width', 1.5);
     lines.exit();
-  }
-
-  /** Generate a random, evenly distributed color */
-  randomColor(): string {
-    let golden_ratio_conjugate = 0.618033988749895;
-    let h = Math.random();
-    h += golden_ratio_conjugate;
-    h %= 1;
-    return this.hslToRgb(h, 0.5, 0.60);
-  }
-
-  hslToRgb(h, s, l) {
-      let r, g, b;
-      if(s == 0){
-          r = g = b = l; // achromatic
-      } else {
-          function hue2rgb(p, q, t){
-              if(t < 0) t += 1;
-              if(t > 1) t -= 1;
-              if(t < 1/6) return p + (q - p) * 6 * t;
-              if(t < 1/2) return q;
-              if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-              return p;
-          }
-          var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-          var p = 2 * l - q;
-          r = hue2rgb(p, q, h + 1/3);
-          g = hue2rgb(p, q, h);
-          b = hue2rgb(p, q, h - 1/3);
-      }
-      return '#'+Math.round(r * 255).toString(16)+Math.round(g * 255).toString(16)+Math.round(b * 255).toString(16);
   }
 
   showLine() {
