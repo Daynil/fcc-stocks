@@ -1,0 +1,16 @@
+<div id="list-container">
+  <div *ngFor="let stock of stockList" class="stock-info">
+    <span class="stock-color" 
+          *ngIf="!stock.hover"
+          [ngStyle]="{backgroundColor: stock.color}"
+          (mouseover)="colorHover(stock, 'over')">
+    </span>
+    <span class="stock-delete"
+          *ngIf="stock.hover"
+          (mouseout)="colorHover(stock, 'out')"
+          (click)="removeStock(stock)">
+      <i class="fa fa-times" aria-hidden="true"></i>
+    </span>
+    <span class="stock-name">{{ stock.name }}: {{ stock.priceSelected }}</span>
+  </div>
+</div>

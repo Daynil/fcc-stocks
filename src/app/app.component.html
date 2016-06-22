@@ -6,4 +6,6 @@
     Add Stock: <input #stockname type="text" placeholder="Stock name..."
                       (keyup.enter)="addStock(stockname)">
   </div>
+  <div id="selected-date">{{ stockService.selectedDate }}</div>
+  <stock-list></stock-list>
 </div>

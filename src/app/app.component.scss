@@ -10,6 +10,16 @@
   text-align: center;
 }
 
+#selected-date {
+  width: 200px;
+  margin: 0 auto;
+  padding: 10px;
+  border-bottom: 1px solid hsl(208, 100%, 97%);
+  border-top: 1px solid hsl(208, 100%, 97%);
+  position: relative;
+  top: 15px;
+}
+
 #stock-input {
   margin-top: 10px;
   input {

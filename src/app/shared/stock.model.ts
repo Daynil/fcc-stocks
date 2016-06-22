@@ -4,14 +4,12 @@ export interface Stock {
   name: string;
   newestDate: string;
   oldestDate: string;
+  color?: string;
+  hover?: boolean;
+  priceSelected?: number;
 }
 
 export interface DataPoint {
   date: Date;
   price: number;
-}
-
-export interface StockColorArr extends Array<number[]|string>{
-  0: number[];
-  1: string;
 }

@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
+import { EventEmitter, Injectable } from '@angular/core';
 import { Http, Response } from '@angular/http';
 import "rxjs/add/operator/toPromise";
 import * as d3 from "d3";
+import * as _ from "lodash";
 
 import { parseJson, handleError } from '../shared/http-helpers';
 import { DataPoint, Stock } from './stock.model';
@@ -11,41 +12,53 @@ import { RandomColorGen } from './color-gen.util';
 @Injectable()
 export class StockService {
 
-  stockList: {stock: Stock, color: string}[] = [];
+  stockList: Stock[] = [];
+  stockAdded: EventEmitter<Stock> = new EventEmitter<Stock>();
 
   w = 1100;
   h = 350;
   paddingX = 40;
   paddingY = 5;
+  rawGraph: HTMLDivElement;
   chartRef: d3.Selection<any>;
   xScale: d3.time.Scale<number, number>;
   yScale: d3.scale.Linear<number, number>;  
   xAxis: d3.svg.Axis;
   yAxis: d3.svg.Axis;
   lineFunc: d3.svg.Line<DataPoint>;
+  axisTimeFormat: d3.time.Format;
+  displayTimeFormat: d3.time.Format = d3.time.format('%B %d, %Y');
+  selectedDate: string = 'Selected Date';
 
   lineRef: HTMLDivElement;
   leftBase = 317;
+  relativeX = 0;
   mouseX = 0;
   colorGen: RandomColorGen;
 
   constructor(private http: Http) {
     // How do we dependency inject a utility with configurable paramater?
-    this.colorGen = new RandomColorGen(24);
+    this.colorGen = new RandomColorGen(12);
   }
 
-  updateMouseX(xPos: number) {
- 	  this.mouseX = xPos;
+  updateMouseX(mouseX: number) {
+    this.mouseX = mouseX;
+    this.relativeX = mouseX - this.rawGraph.offsetLeft - 32;
+    if (this.relativeX < 0 + this.paddingX || this.relativeX > this.w) this.lineRef.style.display = 'none';
+    else this.showLine();
   }
 
   createGraph(graph: HTMLDivElement, line: HTMLDivElement) {
+    this.rawGraph = graph;
     this.chartRef = d3.select(graph)
                       .append('svg')
                       .attr('width', this.w + 'px')
                       .attr('height', this.h + 'px');
 
     this.lineRef = line;
-    console.log(this.lineRef);
+    this.lineRef.style.display = 'none';
+    
+    this.axisTimeFormat = d3.time.format("%b '%y");
 
     this.xScale = d3.time.scale();
     this.yScale = d3.scale.linear();
@@ -66,17 +79,56 @@ export class StockService {
   }
 
   addStocktoChart(stockInfo: Stock) {
-    this.stockList.push({stock: stockInfo, color: this.colorGen.randomColor()});
+    stockInfo.color = this.colorGen.randomColor();
+    this.stockList.push(stockInfo);
 
+    this.updateScales();
+
+    // Apply list of stocks as new data
+    let lines = this.chartRef.selectAll('.line')
+                              .data(this.stockList.map(stockCol => stockCol.data));
+
+    // Transition existing lines
+    lines.transition().duration(500)
+          .attr('d', this.lineFunc);
+
+    // Add non-existing lines
+    lines.enter()
+          .append('svg:path')
+          .attr('class', (d, i) => 'line ' + this.stockList[i].symbol)
+          .attr('d', this.lineFunc)
+          .attr('fill', 'none')
+          .attr('stroke', (d, i) => this.stockList[i].color)
+          .attr('stroke-width', 1.5);
+    lines.exit();
+  }
+
+  removeStock(stock: Stock) {
+    this.stockList.splice(this.stockList.indexOf(stock), 1);
+    this.updateScales();
+
+    // Remove stock line
+    d3.select(`.${stock.symbol}`).remove();
+
+    // Apply list of stocks as new data
+    let lines = this.chartRef.selectAll('.line')
+                              .data(this.stockList.map(stockCol => stockCol.data));
+
+    // Transition existing lines
+    lines.transition().duration(500)
+          .attr('d', this.lineFunc);
+  }
+
+  updateScales() {
     // Find appropriate scale based on min and max values in stock collection
-    let minDate = d3.max(this.stockList, d => d3.min( d.stock.data, d2 => d2.date.getTime()) );
-    let maxDate = d3.max(this.stockList, d => Date.parse(d.stock.newestDate));
+    let minDate = d3.max(this.stockList, d => d3.min( d.data, d2 => d2.date.getTime()) );
+    let maxDate = d3.max(this.stockList, d => Date.parse(d.newestDate));
 
     let minPrice = 999999;
     let maxPrice = 0;
     this.stockList.forEach(stockCol => {
-      let stockMinPrice = d3.min(stockCol.stock.data, d => d.price);
-      let stockMaxPrice = d3.max(stockCol.stock.data, d => d.price);
+      let stockMinPrice = d3.min(stockCol.data, d => d.price);
+      let stockMaxPrice = d3.max(stockCol.data, d => d.price);
       if (stockMinPrice < minPrice) minPrice = stockMinPrice;
       if (stockMaxPrice > maxPrice) maxPrice = stockMaxPrice; 
     });
@@ -85,8 +137,7 @@ export class StockService {
     this.yScale.domain([minPrice, maxPrice]).range([this.h - this.paddingX, this.paddingX]);
 
     // Update x-axis labels
-    let timeFormat = d3.time.format("%b '%y");
-    this.xAxis.scale(this.xScale).tickFormat(timeFormat);
+    this.xAxis.scale(this.xScale).tickFormat(this.axisTimeFormat);
     this.yAxis.scale(this.yScale).ticks(6);
 
     this.chartRef.selectAll('g.x.axis').transition().duration(500).call(this.xAxis);
@@ -102,29 +153,20 @@ export class StockService {
                   .attr('font-size', '12px')
                   .attr('fill', 'aliceblue')
                   .attr('shape-rendering', 'crispEdges');
-
-    // Apply list of stocks as new data
-    let lines = this.chartRef.selectAll('.line')
-                              .data(this.stockList.map(stockCol => stockCol.stock.data))
-                              .attr('class', 'line');
-
-    // Transition existing lines
-    lines.transition().duration(500)
-          .attr('d', this.lineFunc);
-
-    // Add non-existing lines
-    lines.enter()
-          .append('svg:path')
-          .attr('class', 'line')
-          .attr('d', this.lineFunc)
-          .attr('fill', 'none')
-          .attr('stroke', (d, i) => this.stockList[i].color)
-          .attr('stroke-width', 1.5);
-    lines.exit();
   }
 
   showLine() {
-    //this.lineRef.setAttribute('left', this.mouseX + 'px');
+    this.lineRef.style.display = '';
+    this.lineRef.style.left = this.mouseX + 'px';
+    let xDate = this.xScale.invert(this.relativeX);
+    let strippedXDate = new Date(xDate.getUTCFullYear(), xDate.getUTCMonth(), xDate.getUTCDate());
+    this.stockList.forEach(stock => {
+      let selectedPrice = _.find( stock.data, d => d.date.getTime() == strippedXDate.getTime() );
+      if (typeof selectedPrice != 'undefined') {
+        this.selectedDate = this.displayTimeFormat(selectedPrice.date);
+        stock.priceSelected = selectedPrice.price;
+      }
+    });
   }
 
   getStockData(stockSymbol: string) {
@@ -133,6 +175,10 @@ export class StockService {
                 .toPromise()
                 .then(parseJson)
                 .then(this.formatResponse)
+                .then(res => {
+                  this.stockAdded.emit(res);
+                  return res;
+                })
                 .then(stockInfo => this.addStocktoChart(stockInfo))
                 .catch(handleError);
   }
@@ -148,8 +194,9 @@ export class StockService {
     formattedData.data = [];
     data.data.forEach(dayData => {
       let numberDate = new Date(dayData[0]);
+      let strippedDate = new Date(numberDate.getUTCFullYear(), numberDate.getUTCMonth(), numberDate.getUTCDate());
       let formattedDayData = {
-        date: numberDate,
+        date: strippedDate,
         price: dayData[1]
       };
       formattedData.data.push(formattedDayData);
