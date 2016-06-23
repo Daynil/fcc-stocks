@@ -6,7 +6,7 @@
   <attribution></attribution>
   <stock-graph></stock-graph>
   <div id="stock-input">
-    Add Stock: <input #stockname type="text" placeholder="Stock name..."
+    Add Stock: <input #stockname type="text" placeholder="Stock symbol..."
                       (keyup.enter)="addStock(stockname)">
   </div>
   <div id="selected-date">{{ stockService.selectedDate }}</div>
