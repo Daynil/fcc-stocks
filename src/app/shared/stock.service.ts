@@ -41,9 +41,8 @@ export class StockService {
     // How do we dependency inject a utility with configurable paramater?
     this.colorGen = new RandomColorGen(12);
     
-    // Listen for stocks added by other clients and sync
+    // Listen for stocks added/removed by other clients and sync
     this.socketService.pushStock.subscribe( (outsiderStock) => {
-      console.log(outsiderStock);
       // Dates are sent over the wire stringified, reformat for compatability
       outsiderStock.data = outsiderStock.data.map(dataPt => {
         dataPt.date = this.formatDate(dataPt.date);
@@ -51,6 +50,16 @@ export class StockService {
       });
       this.addStocktoChart(outsiderStock);
     });
+    
+    this.socketService.removeStock.subscribe( (outsideRemovedStock) => {
+      // Dates are sent over the wire stringified, reformat for compatability
+      outsideRemovedStock.data = outsideRemovedStock.data.map(dataPt => {
+        dataPt.date = this.formatDate(dataPt.date);
+        return dataPt;
+      });
+      this.removeStock(outsideRemovedStock, false);
+    });
+    
   }
 
   updateMouseX(mouseX: number) {
@@ -93,7 +102,6 @@ export class StockService {
   addStocktoChart(stockInfo: Stock) {
     // Reject duplicates
     let duplicateStock = _.find(this.stockList, d => d.symbol === stockInfo.symbol);
-    console.log(duplicateStock);
     if (typeof duplicateStock !== 'undefined') return;
 
     this.stockList.push(stockInfo);
@@ -119,8 +127,9 @@ export class StockService {
     lines.exit();
   }
 
-  removeStock(stock: Stock) {
-    this.stockList.splice(this.stockList.indexOf(stock), 1);
+  removeStock(stock: Stock, selfInitiated: boolean) {
+    if (selfInitiated) this.socketService.emitRemovedStock(stock);
+    _.remove(this.stockList, d => d.symbol === stock.symbol);
     this.updateScales();
 
     // Remove stock line
@@ -189,12 +198,31 @@ export class StockService {
     });
   }
 
+  getExistingStocks() {
+    return this.http
+                .get('/api/getexistingstocks')
+                .toPromise()
+                .then(parseJson)
+                .then((res: Array<any>) => {
+                  let formattedStockList = res.map(unformedStock => {
+                    return this.formatDbResponse(unformedStock);
+                  });
+                  return formattedStockList;
+                })
+                .then((existingStocks: Stock[]) => {
+                  existingStocks.forEach(stock => {
+                    this.addStocktoChart(stock);
+                  });
+                })
+                .catch(handleError)                
+  }
+
   getStockData(stockSymbol: string) {
     return this.http
                 .get(`/api/getstockdata/${stockSymbol}`)
                 .toPromise()
                 .then(parseJson)
-                .then(this.formatResponse.bind(this))
+                .then(this.formatQuandlResponse.bind(this))
                 .then( (res: Stock) => {
                   this.stockAdded.emit(res);
                   this.socketService.emitStock(res);
@@ -204,7 +232,7 @@ export class StockService {
                 .catch(handleError);
   }
 
-  private formatResponse(dataset): Stock {
+  private formatQuandlResponse(dataset): Stock {
     let data = dataset.dataset;
     let formattedData: Stock = <Stock>{};
     formattedData.symbol = data.dataset_code;
@@ -223,6 +251,15 @@ export class StockService {
     });
     formattedData.color = this.colorGen.randomColor();
     return formattedData;
+  }
+
+  private formatDbResponse(stock): Stock {
+    let formattedStock: Stock = stock;
+    formattedStock.data = stock.data.map(dataPt => {
+      dataPt.date = this.formatDate(dataPt.date);
+      return dataPt;
+    });
+    return formattedStock;
   }
 
   private formatDate(stringyDate: string): Date {

@@ -19,12 +19,10 @@ let production = process.env.NODE_ENV === 'production';
 const apiKey = process.env.QUANDL_API_KEY;
 const baseUrl = 'https://www.quandl.com/api/v3/datasets/WIKI/';
 
-// DEBUG
-//const fs = require('fs');
-const aaplCache = require('./aaplCache.json');
-const abbvCache = require('./abbvCache.json');
-const cvsCache = require('./cvsCache.json');
-const fbCache = require('./fbCache.json');
+// Database
+const mongoose = require('mongoose');
+mongoose.connect(process.env.MONGO_URI);
+const Stocks = require('./stocks');
 
 /** True = get response details on served node modules **/
 let verboseLogging = false;
@@ -48,18 +46,23 @@ app.use( express.static( path.join(__dirname, '../dist') ));
 app.use('/scripts', express.static( path.join(__dirname, '../node_modules') ));
 app.use('/app', express.static( path.join(__dirname, '../dist/app') ));
 
+app.get('/api/getexistingstocks', (req, res) => {
+  Stocks
+    .find({})
+    .exec()
+    .then(results => {
+      res.status(200).send(results);
+    })
+    .catch(err => {
+      console.log('get stocks err: ', err);
+      res.status(500).send(err);
+    });
+})
+
 app.get('/api/getstockdata/:symbol', (req, res) => {
   let stockSym = req.params.symbol;
-  if (stockSym === "FB") {
-    res.status(200).json(fbCache);
-  } else if (stockSym === "AAPL") {
-    res.status(200).json(aaplCache);            
-  } else if (stockSym === "CVS") {
-    res.status(200).json(cvsCache);
-  } else if (stockSym === "ABBV") {
-    res.status(200).json(abbvCache);
-  }
-  else axios.get(`${baseUrl}${stockSym}.json?api_key=${apiKey}&start_date=2015-06-17`)
+
+  axios.get(`${baseUrl}${stockSym}.json?api_key=${apiKey}&start_date=2015-06-17`)
         .then(data => {
           res.status(200).json(data.data);
         })
@@ -71,8 +74,34 @@ app.get('/api/getstockdata/:symbol', (req, res) => {
 
 io.on('connection', socket => {
   socket.on('newStock', stock => {
+    Stocks
+      .findOne({symbol: stock.symbol})
+      .exec()
+      .then(result => {
+        if (result === null) {
+          let newStock = new Stocks({
+            data: stock.data,
+            symbol: stock.symbol,
+            name: stock.name,
+            newestDate: stock.newestDate,
+            oldestDate: stock.oldestDate,
+            color: stock.color
+          });
+          newStock.save(err => {
+            if (err) console.log('saveError: ', err);
+          });
+        }
+      });
     socket.broadcast.emit('pushStock', stock);
   });
+
+  socket.on('removeStock', stock => {
+    Stocks
+      .remove({ symbol: stock.symbol }, err => {
+        if (err) console.log(err);
+      });
+    socket.broadcast.emit('sliceStock', stock);
+  })
 });
 
 /** Pass all non-api routes to front-end router for handling **/ 

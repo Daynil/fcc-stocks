@@ -24,7 +24,7 @@ export class StockListComponent {
   }
 
   removeStock(stock: Stock) {
-    this.stockService.removeStock(stock);
+    this.stockService.removeStock(stock, true);
   }
 
 }

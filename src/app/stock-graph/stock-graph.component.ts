@@ -20,6 +20,7 @@ export class StockGraphComponent implements AfterViewInit, OnInit {
 
   ngAfterViewInit() {
     this.stockService.createGraph(this.graph.nativeElement, this.verticalLine.nativeElement);
+    this.stockService.getExistingStocks();
   }
 
   @HostListener('mousemove', ['$event'])
