@@ -1,13 +1,20 @@
 @import './shared/colors';
 
 #app-wrapper {
-  width: 100%;
+  min-width: 1164px;
   min-height: 100%;
   padding-top: 15px;
   color: aliceblue;
   font-family: 'Raleway';
   background-color: $light-teal;
   text-align: center;
+  margin-top: -15px;
+}
+
+#title {
+  h1 {
+    margin-bottom: -10px;
+  }
 }
 
 #selected-date {
