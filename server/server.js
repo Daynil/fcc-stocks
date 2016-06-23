@@ -1,6 +1,8 @@
 'use strict';
 const express = require('express');
 const app = express();
+const http = require('http').Server(app);
+const io = require('socket.io')(http);
 const path = require('path');
 const bodyParser = require('body-parser');
 const morgan = require('morgan');
@@ -67,10 +69,16 @@ app.get('/api/getstockdata/:symbol', (req, res) => {
         });
 });
 
+io.on('connection', socket => {
+  socket.on('newStock', stock => {
+    socket.broadcast.emit('pushStock', stock);
+  });
+});
+
 /** Pass all non-api routes to front-end router for handling **/ 
 app.get('*', (req, res) => {
   res.sendFile(path.resolve(__dirname, '../dist', 'index.html'));
 });
 
 let port = process.env.PORT || 3000;
-let server = app.listen(port, () => console.log(`Listening on port ${port}...`));
+let server = http.listen(port, () => console.log(`Listening on port ${port}...`));

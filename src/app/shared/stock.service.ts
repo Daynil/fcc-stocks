@@ -7,6 +7,7 @@ import * as _ from "lodash";
 import { parseJson, handleError } from '../shared/http-helpers';
 import { DataPoint, Stock } from './stock.model';
 import { RandomColorGen } from './color-gen.util';
+import { SocketService } from './socket.service';
 
 
 @Injectable()
@@ -36,9 +37,20 @@ export class StockService {
   mouseX = 0;
   colorGen: RandomColorGen;
 
-  constructor(private http: Http) {
+  constructor(private http: Http, private socketService: SocketService) {
     // How do we dependency inject a utility with configurable paramater?
     this.colorGen = new RandomColorGen(12);
+    
+    // Listen for stocks added by other clients and sync
+    this.socketService.pushStock.subscribe( (outsiderStock) => {
+      console.log(outsiderStock);
+      // Dates are sent over the wire stringified, reformat for compatability
+      outsiderStock.data = outsiderStock.data.map(dataPt => {
+        dataPt.date = this.formatDate(dataPt.date);
+        return dataPt;
+      });
+      this.addStocktoChart(outsiderStock);
+    });
   }
 
   updateMouseX(mouseX: number) {
@@ -79,7 +91,11 @@ export class StockService {
   }
 
   addStocktoChart(stockInfo: Stock) {
-    stockInfo.color = this.colorGen.randomColor();
+    // Reject duplicates
+    let duplicateStock = _.find(this.stockList, d => d.symbol === stockInfo.symbol);
+    console.log(duplicateStock);
+    if (typeof duplicateStock !== 'undefined') return;
+
     this.stockList.push(stockInfo);
 
     this.updateScales();
@@ -121,7 +137,11 @@ export class StockService {
 
   updateScales() {
     // Find appropriate scale based on min and max values in stock collection
-    let minDate = d3.max(this.stockList, d => d3.min( d.data, d2 => d2.date.getTime()) );
+    let minDate = d3.max(this.stockList, d => {
+      return d3.min( d.data, d2 => {
+        return d2.date.getTime();
+      })
+    } );
     let maxDate = d3.max(this.stockList, d => Date.parse(d.newestDate));
 
     let minPrice = 999999;
@@ -159,7 +179,7 @@ export class StockService {
     this.lineRef.style.display = '';
     this.lineRef.style.left = this.mouseX + 'px';
     let xDate = this.xScale.invert(this.relativeX);
-    let strippedXDate = new Date(xDate.getUTCFullYear(), xDate.getUTCMonth(), xDate.getUTCDate());
+    let strippedXDate = this.formatDate(xDate.toDateString());
     this.stockList.forEach(stock => {
       let selectedPrice = _.find( stock.data, d => d.date.getTime() == strippedXDate.getTime() );
       if (typeof selectedPrice != 'undefined') {
@@ -174,16 +194,17 @@ export class StockService {
                 .get(`/api/getstockdata/${stockSymbol}`)
                 .toPromise()
                 .then(parseJson)
-                .then(this.formatResponse)
-                .then(res => {
+                .then(this.formatResponse.bind(this))
+                .then( (res: Stock) => {
                   this.stockAdded.emit(res);
+                  this.socketService.emitStock(res);
                   return res;
                 })
                 .then(stockInfo => this.addStocktoChart(stockInfo))
                 .catch(handleError);
   }
 
-  private formatResponse(dataset) {
+  private formatResponse(dataset): Stock {
     let data = dataset.dataset;
     let formattedData: Stock = <Stock>{};
     formattedData.symbol = data.dataset_code;
@@ -193,15 +214,20 @@ export class StockService {
     formattedData.oldestDate = data.oldest_available_date;
     formattedData.data = [];
     data.data.forEach(dayData => {
-      let numberDate = new Date(dayData[0]);
-      let strippedDate = new Date(numberDate.getUTCFullYear(), numberDate.getUTCMonth(), numberDate.getUTCDate());
+      let strippedDate = this.formatDate(dayData[0])
       let formattedDayData = {
         date: strippedDate,
         price: dayData[1]
       };
       formattedData.data.push(formattedDayData);
     });
+    formattedData.color = this.colorGen.randomColor();
     return formattedData;
+  }
+
+  private formatDate(stringyDate: string): Date {
+    let numberDate = new Date(stringyDate);
+    return new Date(numberDate.getUTCFullYear(), numberDate.getUTCMonth(), numberDate.getUTCDate());
   }
 
 }

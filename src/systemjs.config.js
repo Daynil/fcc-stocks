@@ -7,7 +7,8 @@
     'angular2-in-memory-web-api': 'scripts/angular2-in-memory-web-api',
     '@angular':                   'scripts/@angular',
     'lodash':                     'scripts/lodash/lodash.js',
-    'd3':                         'scripts/d3/d3.js'
+    'd3':                         'scripts/d3/d3.js',
+    'socket.io-client':           'scripts/socket.io-client/socket.io.js'
   };
 
   // packages tells the System loader how to load when no filename and/or no extension
@@ -16,7 +17,8 @@
     'rxjs':                       { defaultExtension: 'js' },
     'angular2-in-memory-web-api': { defaultExtension: 'js' },
     'lodash':                     { defaultExtension: 'js' },
-    'd3':                         { defaultExtension: 'js' }
+    'd3':                         { defaultExtension: 'js' },
+    'socket.io-client':           { defaultExtension: 'js' }
   };
 
   var ngPackageNames = [
